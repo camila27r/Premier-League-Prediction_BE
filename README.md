@@ -1,6 +1,6 @@
    # Premier League Prediction Bachelor's Essay
 
-   Predicting PL 25/26 match outcomes and final table using ML, SQL, and Power BI/Tableu.
+   Predicting PL 26/27 match outcomes and final table using ML, SQL, and Power BI/Tableu.
 
    ## Status
    - SQL schema designed (ERM finalized) — teams, seasons, matches, match_stats, betting_odds, model_predictions, team_seasons
