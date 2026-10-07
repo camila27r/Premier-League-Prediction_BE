@@ -1,11 +1,9 @@
-# Import data for the 2024-2025 Premier League season into the pl_predictor database.
+# Import data for all seasons.
 import os
 import pandas as pd
 import psycopg2
 from datetime import datetime
 
-CSV_PATH = "Data/2425.csv"      # path to the season CSV you downloaded
-SEASON_LABEL = "2024-2025"          # must match format used in `seasons` table
 
 DB_CONFIG = {
     "host": "localhost",
@@ -15,13 +13,45 @@ DB_CONFIG = {
     "password": os.environ.get("PG_PASSWORD"),   # the password you set during Postgres install
 }
 
+# List of paths to the season CSV's
+# season label matches format used in the 'seasons' table
+
+SEASON_TO_IMPORT = [
+    ("Data/2627.csv", "2026-2027"),
+    ("Data/2526.csv", "2025-2026"),
+    ("Data/2425.csv", "2024-2025"),
+    ("Data/2324.csv", "2023-2024"),
+    ("Data/2223.csv", "2022-2023"),
+    ("Data/2122.csv", "2021-2022"),
+    ("Data/2021.csv", "2020-2021"),
+    ("Data/1920.csv", "2019-2020"),
+    ("Data/1819.csv", "2018-2019"),
+]
+
 
 def main():
+    # CONNECT TO POSTGRES
 
-    # 2. READ THE CSV
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    print("Connected to database.")
 
+    # Loop through each season CSV and import the data
+    for csv_path, season_label in SEASON_TO_IMPORT:
+        print(f"Importing data for season {season_label} from {csv_path}")
+        import_data(cur, conn, csv_path, season_label)
+
+    conn.close()
+    cur.close()
+    print("Data import completed.")
+
+
+
+def import_data(cur, conn, csv_path, season_label):
+
+    # READ THE CSV
     # pandas.read_csv() loads a CSV file into a "DataFrame" 
-    df = pd.read_csv(CSV_PATH)
+    df = pd.read_csv(csv_path)
 
     # this prints the first 5 rows to see what pandas actually loaded
     print("Preview of loaded data:")
@@ -31,11 +61,6 @@ def main():
     # Converts the Date column (text) into real Python date objects, helps Postgres accepts them correctly.
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True).dt.date
 
-
-    # 3. CONNECT TO POSTGRES
-    conn = psycopg2.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    print("Connected to database.")
 
     
     # 4. INSERT THE SEASON
@@ -47,15 +72,22 @@ def main():
         VALUES (%s)
         ON CONFLICT (season_label) DO NOTHING
         """,
-        (SEASON_LABEL,),
+        (season_label,),
     )
     conn.commit()
 
     # Fetch the season_id we just inserted (or that already existed)
-    cur.execute("SELECT season_id FROM seasons WHERE season_label = %s", (SEASON_LABEL,))
+    cur.execute(
+        """ 
+        SELECT season_id 
+        FROM seasons 
+        WHERE season_label = %s
+        """,
+        (season_label,),
+    )
     # fetchone returns first matching row as a tuple so [0] indexes for first number (3,-) -> 3
     season_id = cur.fetchone()[0]
-    print(f"Season '{SEASON_LABEL}' -> season_id {season_id}")
+    print(f"Season '{season_label}' -> season_id {season_id}")
 
     # 5. INSERT TEAMS
     # df[Hometeam], df[AwayTeam] are pandas series (so column of data)
@@ -103,6 +135,7 @@ def main():
                 referee
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (season_id, match_date, home_team_id, away_team_id) DO NOTHING
             """,
             (
                 season_id,
@@ -122,13 +155,7 @@ def main():
         inserted += 1
 
     conn.commit()
-    print(f"Inserted {inserted} matches.")
-
-    # 7. CLEAN UP
-
-    cur.close()
-    conn.close()
-    print("Done. Connection closed.")
+    print(f"Inserted {inserted} matches for season {season_label}.")
 
 
 if __name__ == "__main__":
