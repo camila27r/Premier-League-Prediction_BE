@@ -1,22 +1,3 @@
-"""
-
-Populates the team_seasons table by:
-1. Finding which teams played in each season (derived from `matches`)
-2. Comparing each season to the one before it to detect:
-   - was_promoted: team appears this season but didn't last season
-   - was_relegated: team appeared last season but is gone this season
-3. Inserting one row per (team, season) into team_seasons
-
-NOTE: This only works for CONSECUTIVE seasons you've imported. If you're
-missing a season in between two you have, the comparison will incorrectly
-flag normal squad changes as promotion/relegation. Since your 7+ seasons
-are consecutive, this should be accurate out of the box.
-
-The very first season in your dataset has no prior season to compare
-against, so every team in it is left as was_promoted = NULL (unknown)
-rather than guessed at.
-"""
-
 import psycopg2
 import os
 
